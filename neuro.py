@@ -18,12 +18,14 @@ class Perceptron:
         Короче, слушай сюда.
         Сначала создаешь себе перцептрон VASYA = Perceptron([3, 2, 1])
         Это типа у него три входа, один слой на два значения и один выходной нейрон
-        Потом херачишь туда входные данные VASYA.input = [[1, 1, 1], [2, 2, 2]] — два примера по три чиселка
-        Можешь посмотреть, че он насчитает, запустив VASYA.how_about_these() и вывести VASYA.output на печать
+        Потом ,берешь входные данные a = [[1, 1, 1], [2, 2, 2]] — два примера по три чиселка
+        Можешь посмотреть, че он насчитает, запустив VASYA.how_about_these(a) и вывести VASYA.output на печать
         Ничего хорошего он не насчитает, сразу говорю
-        Пушо его надо обучить. Херачишь массив x=[[0], [1]], и запускаешь процедурку VASYA.learh_these(x)
+        Пушо его надо обучить. Херачишь массив b=[[0], [1]], и запускаешь процедурку VASYA.learh_these(a, b)
         Вот, собственно, и все.
         А, да, проверка.
+        VASYA.how_close(a,b) выдаст среднеквадратичную ошибку
+        VASYA.how_many_mistakes(a, b) выдаст количество неправильных ответов перцептрона
 
         :param structure:
          Лист вида [i, a, b, c, d... z, o] или [i, o], где
@@ -35,7 +37,7 @@ class Perceptron:
 
         # input_range — число элементов на входе перцептрона в одном примере
         self.input_range = [structure[0]]
-        self.input = np.array(structure[0], ndmin=2)
+        #self.input = np.array(structure[0], ndmin=2)
 
         # output_range — число нейронов (выходов) у перцептрона
         self.output_range = [structure[-1]]
@@ -60,21 +62,24 @@ class Perceptron:
             self.offset.append(np.array(2 * np.random.random((1, self.expand_range[i+1])) - 1))
 
         self.alpha = 0.9  # Скорость обучения [0..1]
+        self.total_error = -1
 
-    def how_about_these(self):  # Считает ответ перцептрона на набор входных значений
-        self.values[0] = np.array(self.input, ndmin=2)
+    def how_about_these(self, input):  # Считает ответ перцептрона на набор входных значений
+        self.values[0] = np.array(input, ndmin=2)
         #print("values 0 : ", self.values[0].shape)
         for i in range(0, self.count):
             self.values[i+1] = sigma(np.dot(self.values[i],self.matrix[i]) + self.offset[i])
             #print("values", i+1, ": ", self.values[i+1].shape)
         self.output = self.values[-1]
 
-    def learn_these(self, wanted_result, exit_by_count = True, iterations = 100, print_progress = False):  # Учит перцептрон на многих примерах
+    def learn_these(self, input, wanted_result, exit_by_count = True, iterations = 100, print_progress = False):  # Учит перцептрон на многих примерах
         start = time.time()
+        #self.input = np.array(input)
 
         if exit_by_count:
             for j in range(iterations):
-                self.how_about_these()
+
+                self.how_about_these(input)
 
                 self.example_range = self.values[0].shape[0]  # Число примеров
                 error = [i for i in range(self.count + 1)]
@@ -93,13 +98,25 @@ class Perceptron:
                         else: print(" ", j * 10 // iterations, "0% ", sep='', end='', flush=True)
                     elif j * 40 % iterations == 0:
                         print(".", sep='', end='', flush=True)
-            print(" 100%", sep='', flush=True)
+            if print_progress: print(" 100%", sep='', flush=True)
             self.time = time.time() - start
-            self.total_error = np.linalg.norm
+            self.total_error = np.linalg.norm(wanted_result - self.output)
+
+    def how_close (self, input, output):
+        o = np.array(output)
+        #self.input = np.array(input)
+        self.how_about_these(input)
+        return round(np.linalg.norm(o - self.output)/o.size,3)
+
+    def how_many_mistakes (self, input, output):
+        o = np.array(output)
+        #self.input = np.array(input)
+        self.how_about_these(input)
+        return int(np.sum(np.around(np.absolute(o - self.output))))
 
 
 if __name__ == '__main__':
-    np.random.seed(43)
+    #np.random.seed(43)
 
     N1 = Perceptron([3, 3, 2])
     inputs = [[0, 0, 0],
@@ -142,18 +159,12 @@ if __name__ == '__main__':
                    [0, 1],
                    [0, 0]]
 
-    N1.input = testinputs
-    N1.how_about_these()
-    print("Ошибка на тестовых примерах до обучения:", round(np.linalg.norm(N1.output - testoutputs), 3))
 
-    N1.input = inputs
-    N1.learn_these(outputs, iterations = 10000, print_progress = True)
+    print("Ошибка на тестовых примерах до обучения:", N1.how_close(testinputs, testoutputs))
+    print("Количество неправильных ответов:", N1.how_many_mistakes(testinputs, testoutputs))
+
+    N1.learn_these(inputs, outputs, iterations = 10000, print_progress = True)
     print("Я ебался с твоими цифрами", round(N1.time, 3), "с.")
 
-    N1.input = inputs
-    N1.learn_these(outputs, iterations = 10000, print_progress = True)
-    print("Я ебался с твоими цифрами", round(N1.time, 3), "с.")
-
-    N1.input = testinputs
-    N1.how_about_these()
-    print("Ошибка на тестовых примерах до обучения:", round(np.linalg.norm(N1.output - testoutputs), 3))
+    print("Ошибка на тестовых примерах до обучения:", N1.how_close(testinputs, testoutputs))
+    print("Количество неправильных ответов:", N1.how_many_mistakes(testinputs, testoutputs))
